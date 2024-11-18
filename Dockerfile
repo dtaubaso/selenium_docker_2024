@@ -1,22 +1,25 @@
-FROM selenium/standalone-chrome:latest
+# Use the official lightweight Python image.
+# https://hub.docker.com/_/python
+FROM python:3.9-slim
 
-# Instalar Python y herramientas necesarias
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    python3 \
-    python3-pip \
-    python3-dev && \
-    rm -rf /var/lib/apt/lists/*
+# Allow statements and log messages to immediately appear in the Knative logs
+ENV PYTHONUNBUFFERED True
 
-# Instalar dependencias de Python
-COPY requirements.txt .
-RUN pip3 install --no-cache-dir -r requirements.txt
+# Install manually all the missing libraries
+RUN apt-get update
+RUN apt-get install -y wget
 
-# Copiar código de la aplicación
-COPY . /app
-WORKDIR /app
+# Install Chrome
+RUN wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+RUN dpkg -i google-chrome-stable_current_amd64.deb; apt-get -fy install
 
-# Exponer el puerto que utilizará Uvicorn
-EXPOSE 8080
+# Copy local code to the container image.
+ENV APP_HOME /app
+WORKDIR $APP_HOME
+COPY . ./
 
-# Comando para iniciar FastAPI con Uvicorn
+# Install production dependencies.
+RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install uvicorn
+
 CMD exec uvicorn --port $PORT --host 0.0.0.0 app:app
